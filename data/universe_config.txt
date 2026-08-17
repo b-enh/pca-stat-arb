@@ -1,0 +1,2 @@
+split_date=2025-06-20
+selected_stocks=ADBE,CRM,META,MSFT,NVDA,ORCL,QCOM
