@@ -86,7 +86,7 @@ print(f"Open target positions: {len(open_targets)}")
 print(f"Capital per position: ${capital_per_position:,.2f}")
 
 # was unsure of alpaca api so had to research how to do the rest
-current_positions = {p.symbol: int(p.qty) if p.side == "long" else -int(p.qty)
+current_positions = {p.symbol: abs(int(float(p.qty))) if p.side == "long" else -abs(int(float(p.qty)))
                       for p in client.get_all_positions()}
 print(f"\nCurrent Alpaca positions: {current_positions}")
 
