@@ -14,8 +14,6 @@ dates = returns.index
 
 residuals_list = []
 residual_dates = []
-cohesion_list = []
-cohesion_dates = []
 
 for i in range(WINDOW, len(returns) - STEP, STEP):
     window_data = returns.iloc[i - WINDOW : i].values
@@ -25,9 +23,6 @@ for i in range(WINDOW, len(returns) - STEP, STEP):
 
     pca = PCA(n_components=N_COMPONENTS)
     factor_returns_window = pca.fit_transform(window_scaled) 
-
-    cohesion_list.append(pca.explained_variance_ratio_[0])
-    cohesion_dates.append(dates[i])
 
     X = np.column_stack([np.ones(WINDOW), factor_returns_window])
     betas = np.linalg.lstsq(X, window_scaled, rcond=None)[0] 
@@ -48,9 +43,6 @@ for i in range(WINDOW, len(returns) - STEP, STEP):
 
 residuals_df = pd.DataFrame(residuals_list, index=residual_dates, columns=tickers)
 residuals_df.to_csv("../data/residuals.csv")
-
-cohesion = pd.Series(cohesion_list, index=cohesion_dates, name="PC1_variance_ratio")
-cohesion.to_csv("../data/cohesion.csv")
 
 print(residuals_df.shape)
 print(residuals_df.head())
