@@ -1,0 +1,2 @@
+strategy,observations,annualized_mean,cagr,sharpe,max_drawdown,hac_t_statistic,hac_one_sided_p_value,bootstrap_sharpe_low,bootstrap_sharpe_high,search_adjusted_p_value,passed_validation
+residual_correlation_centrality,946,0.021764496385001338,0.015463187187164884,0.19215753780199438,-0.22687759814923292,0.3914826728960321,0.3477202469100644,-0.7340994404235114,1.1910899981194896,1.0,False
