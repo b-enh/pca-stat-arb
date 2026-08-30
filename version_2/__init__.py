@@ -1,1 +1,1 @@
-"""Version 2: PCA residual-correlation centrality strategy."""
+"""Version 2: short-term dynamic-PCA residual-reversal strategy."""

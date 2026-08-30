@@ -1,15 +1,27 @@
 # PCA Statistical Arbitrage Strategy
 
-This strategy investigates whether residuals derived from rolling PCA can be used in a mean-reversion strategy across a basket of US technology stocks. It focuses on not only building the strategy, but also on the testing and evaluation process.
+This strategy investigates whether residuals derived from rolling PCA can be used in a mean-reversion strategy across a selection of different stocks. It focuses on not only building the strategy, but also on the testing and evaluation process.
+
+The strategy was developed in two phases. 
+**Version 1** establishes the initial research process. Although an intial, historic result seemed promising, the rolling evaluation produced a Sharpe of -0.02 and di not demonstrate a reliable positive edge. Nevertheless, it allowed me to scrutinise and utilise statistical inference in order to evaluate the strategy and check the validity of data.
+**Version 2** retains the original mean-reversion idea, but redesigns the signal by using 'residual pressure' scaled by recent stock-specific residual volatility, and dynamically selects the amount of PCA factors used to describe market movement based on a threshold of explained variance. The strategy buys the three candidates with the strongest positive signal (based on the negative of the scaled residual pressure), and shorts the three with the most negative, using a 'dollar-neutral' portfolio.
+
+Version 2 produced positive discovery results, achieving net Sharpe ratio of 0.804, CAGR of 6.55% on a separate testing dataset. However, the one sided p-value of 0.057 and bootstrap Sharpe confidence interval of [-0.148, 1.799] narrowly miss the thresholds which may suggest statistical significance.
+
+The project therefore demonstrates the overall quantitative research process rather than caliming a proved trading edge, as discussed in the motivation section. It covers hypothesis formation, backtesting, strategy revision, external evaluation, transaction cost modelling, robustness testing and statistical evaluation.
+
 
 ## TL;DR
 
-* Residuals calculated via rolling PCA, least squares regression.
-* Mean-reversion used and evaluated, using autocorrelation to identify stocks compatible with the strategy. This identification will later be used on a rolling basis to facilitate changing market conditions.
-* Binary regime filter evaluated after identifying a U-Shaped relationship between performance and market cohesion, which could be used to create a dynamic and continuous regime classification.
-* Annualised return of 27.79% and a Sharpe of 1.20.
-* Bootstrapped using Sharpe values to check confidence intervals due to highly positive returns, 95% confidence interval within [-0.64, 3.04] with 89.5% of samples above 0. See end for key evaluation, hypothesis testing and discussion.
 
+* Built two versions of a rolling PCA-based statistical arbitrage strategy. 
+* Residuals calculated using rolling PCA and least squares regression in order to evaluate mean-reversion.
+* Version 1 used cumulative z-scores and a rolling autocorrelation stock selection strategy. Evaluation produced a Sharpe of -0.02, showing that initially promising values did not generalise.
+* Version 2 used dynamically selected PCA factors to calculate residuals, extending the hypothesis by measuring five-day residual pressure and trading the expected reversal.
+* Discovery Sharpe ratios: 0.509 for Technology, 0.575 for Financial and 0.296 for Energy.
+* On a UK external testing dataset, version 2 achieved a net Sharpe ratio of 0.804, CAGR of 6.55% and maximum drawdown of -13.54%
+* External p-value was 0.057 and bootstrap Sharpe confidence interval was [-0.148, 1.779], so considered promising but not statistically validated.
+* The main outcome is a transparent research process showing the evaluation and development of an unsucessful first idea into a more defensibe second strategy, highlighting the evaluation process using frequentist inference.
 
 ## Motivation
 
@@ -20,8 +32,6 @@ The project was built in order to develop intuition for quantitative research an
 # Version 1
 
 The strategy uses PCA to decompose a basket of tech stocks into shared market factors, generating stock specific residuals. 
-
-**Pipeline:** daily returns > rolling PCA factor decomposition > stock specific residuals > walk forward stock selection using previous residuals > cumulative Z-score signals > one day lagged positions > portfolio construction > inclusion of transaction costs > performance evaluation
 
 ## Methodology
 
@@ -171,7 +181,145 @@ Equipped with new knowledge of the research process, I continued to develop a ne
 
 ---
 
-Version 2
+# Version 2
+
+## Hypothesis
+
+Version 1 tested whether stock specific price variations (identified using PCA residuals) mean reverted. After completing this and seeing that the results did not validate, I extended the idea by distinguishing between daily noise and sustained residual deviation in a particular direction over time.
+The hypothesis is that several consecutive days of abnormal performance may temporarily move a stock away from its value predicted by its common factors. This could be due to temporary investor overreaction or other similar market events, which may eventually reverse over the following weeks. The hypothesis is therefore similar to that of version 1, but extended so that the direction is not just determined by the residual threshold alone, but also by the strength of the residual pressure over recent periods of time.
+In addition to this, I also wanted to explore the impact of PCA on the information carried by the residuals. Therefore, it was hypothesised that manually restricting the percentage of the variance explained by the PCA and dynamically choosing enough factors such that this threshold of the variance was explained by PCA, may have an impact on the effectiveness of the residuals in a mean reversion strategy.
+
+## Methodology
+
+### 1. Rolling PCA
+
+A rolling PCA model was fitted using the previous 126 trading days. In contrast to version 1, a threshold was use in order to control how much of the variance was to be explained by the PCA. 55% was chosen to test, in order balance removing common risk against preserving the information held by the residuals. It was frozen at this in order to reduce selection bias, but the tuning of this parameter remains a limitation which could be extended and investigated further.
+As a result, version 2 dynamically selects only enough components to explain 55% of the variance. The model refits every 10 days using this rule, and only information available up to that point. 
+This therefore allows for the number of factors to adjust as the structure of the market changes.
+
+### 2. Residual and signal calculations
+
+For each stock, the residuals were calculated by subtracting the explained PCA components from the observed return. Residuals are summed over the last 5 trading days, with a negative sum representing stock-specific underperformance and a positive sum representing the opposite. This sum then needed to be contextualised, which I chose to do by dividing it by the residual volatility over the last 20 days (the standard deviation of residuals over the last 20 days) in order to make sure that naturally more volatile stocks didn’t get receive more extreme scores consistently. These final results were called the residual pressure.
+Signals were then created based on these final results – strongly negative residual pressure generated a positive signal, as we expect the stock to revert imminently in line with the hypothesis, and vice versa. The signal was just taken as the negative of the residual pressure.
+
+### 3. Portfolio construction
+
+After 252 days of history, the strategy then ranks the stocks based on the residual pressure values found previously. Every twenty days, the following procedure takes place:
+1.	Three stocks with the strongest positive expected-return signal (based on the negative of residual pressure) are bought.
+2.	Three stocks with the strongest negative expected-return signals are sold short.
+3.	The long side receives 50% of the portfolio weight.
+4.	The short side receives 50% of the portfolio weight.
+5.	Positions are held until the next scheduled rebalance.
+By doing this we aim to remail independent or neutral on the market and so the gains do not purely come from complete market performance (which is already contributed to by removing the common market factors).
+
+### 4. Timings
+
+Positions are delayed by one trading day as before. Positions remain open until each 20-day rebalance, when stocks no longer in the top or bottom three are closed, with newly selected stocks opened. An interesting extension of this may be to weight stocks differently depending on how they are ranked, or to create an exit strategy that is based on signals, as this removed the key limitation that the stock may be held after it undergoes reversal. 
+Twenty days was chosen as the rebalance period as research showed that faster trading generally produced higher turnover and weaker net results.
+
+## Results
+
+### 1. Discovery findings
+
+The frozen strategy was evaluated across three development universes.
+
+| Universe | Sharpe | CAGR | Maximum drawdown |
+|---|---:|---:|---:|
+| Technology | 0.509 | 5.62% | -17.60% |
+| Financials | 0.575 | 4.09% | -10.20% |
+| Energy | 0.296 | 2.94% | -16.06% |
+
+The strategy produced an initial positive sharpe across all three, but the technology result was unstable across time, meaning that the strategy may be dependent on market regime and that more testing was naturally required.
+
+### 2. Frozen external evaluation
+
+The strategy rules remained frozen before evaluating on an unused universe of 15 UK stocks from 2017 to 2021.
+
+| Metric | Result |
+|---|---:|
+| Annualised arithmetic mean return | 6.69% |
+| CAGR | 6.55% |
+| Net Sharpe ratio | 0.804 |
+| Gross Sharpe ratio | 0.900 |
+| Maximum drawdown | -13.54% |
+| Average daily turnover | 6.33% |
+| First-half Sharpe | 1.580 |
+| Second-half Sharpe | 0.404 |
+
+Results remained positive, but also showed instability over time as previously mentioned.
+
+## Evaluation
+
+### Statistical evaluation
+
+The primary hypotheses were: 
+ Null hypothesis - the strategy's average daily return is not positive.
+ Alternative hypothesis - the strategy's average daily return is positive.
+
+Again, a one sided Newey-West adjusted test was used due to dependence over time. 
+
+| Statistical measure | Result |
+|---|---:|
+| HAC test statistic | 1.580 |
+| One-sided p-value | 0.057 |
+| 95% bootstrap Sharpe interval | [-0.148, 1.779] |
+
+As shown, the test narrowly avoided the standard 5% significance level, however this interval is naturally just a chosen threshold, and so is still somewhat meaningful as a result.
+The bootstrap confidence interval also crossed zero, meaning that the strategy remains consistent with a slightly negative Sharpe and a strongly positive one.
+
+The conclusion is therefore that Version 2 produced a promising external performance, but the evidence is not quite strong enough to establish a positive edge.
+
+It also should be noted that these values are subject to research-selection bias, after exploring multiple candidate extensions of Version 1.
+
+### 2. Robustness checks
+
+#### Transaction cost sensitivity
+
+| Assumed cost | Sharpe | CAGR |
+|---|---:|---:|
+| 0 bp | 0.900 | 7.40% |
+| 5 bp | 0.804 | 6.55% |
+| 10 bp | 0.707 | 5.70% |
+| 20 bp | 0.512 | 4.02% |
+
+Performance remained positive under higher transaction cost assumptions, with declining Sharpe and CAGR (compound annual growth rate) as expected.
+
+#### Dependence on individual stocks
+
+The strategy was recalculated after removing each UK stock individually. Sharpe ratios ranged from 0.472 to 1.179, with a median of approximately 0.754, with each result remaining positive, which is promising.
+
+#### Stability across periods
+
+| Period | Sharpe | CAGR | Maximum drawdown |
+|---|---:|---:|---:|
+| First half | 1.580 | 9.50% | -6.83% |
+| Second half | 0.404 | 3.67% | -13.54% |
+
+Both periods were profitable, but the difference between Sharpe rations does suggest regime dependency.
+
+These checks are diagnostic rather than additional independent validation tests.
+
+### 3. Limitations
+
+* the external sample covers only five years.
+* survivorship bias due to choosing current UK stocks.
+* transaction costs are simplified.
+* exit signals are times instead of based on exit signals.
+* performance differed between subperiods.
+* strategy exploration may have induced selection-bias.
+* the confidence interval still includes zero.
+
+## Conclusion
+
+Version 2 is perhaps a more defensibe extension of Version 1, with more promising data whilst preserving the original mean reversion hypothesis, but providing more justification for holding specific stocks. It tested the hypothesis that sustained stock-sopecific 'residual pressure' may move prices away from their values implied by PCA factors for a temporary period. Under this hypothesis, stocks with strongly negative residual pressures should then revert, outperforming other stocks and vice versa.
+
+The strategy achieved positive results across three development universes and produced a net Sharpe ratio of 0.804 with a 6.55% CAGR on fresh UK data, suggesting some directional consistency with the hypothesis. The strategy was also reasonably robust when checked, as detailed in the previous section.
+
+Several parts of the extended strategy may have accounted for this. Using dynamic PCA may have helped in removing dominant, shared movements before calculating signals. The use of residual pressure here may also have helped to more accurately predict mean-reversion rather than just using thresholds. Scaling by residual volatility may also have helped in preventing naturally volatile stocks from dominating the rankings consistently. Holding the positions for 20 days may also have helped to reduce excessive turnover and allow for reversion to occur before closing positions. As an extension, it would be interesting to see whether performance could have been further improved by using specific exit signals instead of timed exits to prevent positions from being held after mean reversion.
+
+However, its p-value narrowly missed the 5% threshold, its bootstrap confidence interval crossed zero. Version 2 should therefore be interpreted as a promising out-of-sample research result rather than a statistically proved trading edge. 
+
+The evidence must therefore be considered as consistent with the proposed mechanism and hypothesis, but not enough to prove that the strategy has a persistent positive edge. Version 2 could be interpreted as a promising extension of the first version, rather than a statistically validated trading strategy.
 
 
 
