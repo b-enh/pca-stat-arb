@@ -1,0 +1,2 @@
+strategy,average_daily_turnover,average_absolute_net_exposure,observations,annualized_mean,cagr,sharpe,max_drawdown
+residual_correlation_centrality,0.0431201550387597,0.0,688,0.13043210250199852,0.1259905205375118,0.8487772975861595,-0.1486894367400351

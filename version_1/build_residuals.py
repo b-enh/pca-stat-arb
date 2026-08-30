@@ -1,9 +1,13 @@
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-returns = pd.read_csv("../data/returns.csv", index_col="Date", parse_dates=True)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data"
+returns = pd.read_csv(DATA_DIR / "returns.csv", index_col="Date", parse_dates=True)
 
 WINDOW = 60
 STEP = 5
@@ -14,8 +18,6 @@ dates = returns.index
 
 residuals_list = []
 residual_dates = []
-cohesion_list = []
-cohesion_dates = []
 
 for i in range(WINDOW, len(returns) - STEP, STEP):
     window_data = returns.iloc[i - WINDOW : i].values
@@ -25,9 +27,6 @@ for i in range(WINDOW, len(returns) - STEP, STEP):
 
     pca = PCA(n_components=N_COMPONENTS)
     factor_returns_window = pca.fit_transform(window_scaled) 
-
-    cohesion_list.append(pca.explained_variance_ratio_[0])
-    cohesion_dates.append(dates[i])
 
     X = np.column_stack([np.ones(WINDOW), factor_returns_window])
     betas = np.linalg.lstsq(X, window_scaled, rcond=None)[0] 
@@ -47,10 +46,7 @@ for i in range(WINDOW, len(returns) - STEP, STEP):
         residual_dates.append(dates[j])
 
 residuals_df = pd.DataFrame(residuals_list, index=residual_dates, columns=tickers)
-residuals_df.to_csv("../data/residuals.csv")
-
-cohesion = pd.Series(cohesion_list, index=cohesion_dates, name="PC1_variance_ratio")
-cohesion.to_csv("../data/cohesion.csv")
+residuals_df.to_csv(DATA_DIR / "residuals.csv")
 
 print(residuals_df.shape)
 print(residuals_df.head())
