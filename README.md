@@ -323,7 +323,9 @@ The evidence must therefore be considered as consistent with the proposed mechan
 
 
 
+## Development note
 
+AI-Assisted coding tools were used to support implementation of ideas, editing of code and evaluation of candidate strategy ideas via research. I made decisions on the strategy logic and statistical evaluation techniques, and I take responsibility for the methodology, interpretation, the conclusions drawn and the complete write up, whilst also acknowledging that strategy logic was informed by public research.
 
 
 
